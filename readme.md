@@ -28,3 +28,4 @@ Next we change tabs (upper right of the window) to the "Selected Cases" where we
 
 Armed with the focused data in the tables, it is envisaged case mix can be examined and relevant case reviews commence.
 
+
