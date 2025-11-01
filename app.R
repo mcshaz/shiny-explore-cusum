@@ -37,7 +37,7 @@ filterRange <- function(selectedVars) {
   selectedVars <- as.integer(selectedVars)
   return(
     eg_mort %>% 
-      select(Id, Risk = risk, Admitted = icu_admit, Discharged = icu_disch, Diagnosis = dx) %>% 
+      select(Id, Risk = risk, Admitted = icu_admit, Died = icu_disch, Diagnosis = dx) %>% 
       filter(Id %in% selectedVars)
   )
 }
