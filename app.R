@@ -26,6 +26,7 @@ cs$descr <- with(eg_mort,
                             "<strong>ID:</strong>", Id,
                             "<br><strong>Admit:</strong>", format(icu_admit, d.fmt),
                             "<br><strong>Died:</strong>", format(icu_disch, d.fmt),
+                            "<br><small>",dx ,"</small>",
                             "<br><small>(risk of death ", scales::label_percent(accuracy=1)(risk),")</small>"
                         ),
                         NA_character_)
@@ -36,7 +37,7 @@ filterRange <- function(selectedVars) {
   selectedVars <- as.integer(selectedVars)
   return(
     eg_mort %>% 
-      select(Id, Risk = risk, Admitted = icu_admit, Discharged = icu_disch) %>% 
+      select(Id, Risk = risk, Admitted = icu_admit, Discharged = icu_disch, Diagnosis = dx) %>% 
       filter(Id %in% selectedVars)
   )
 }
@@ -91,7 +92,6 @@ server <- function(input, output) {
         csum.plot <- csum.plot + 
           geom_segment_interactive(data=dt[indx,], color=colour, hover_nearest = TRUE)
       }
-      # hover_nearest = TRUE
       
       girafe(ggobj = csum.plot)
     })
