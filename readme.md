@@ -1,0 +1,26 @@
+# RA-CUSUM - Shiny demonstration
+
+### Synopsis
+
+This is to show how shiny might be used to help explore risk adjusted CUSUMS charts as part of an investigation into the "trigger" or "warning" threshold being crossed. 
+
+### Data
+
+The data used here are fictitious data, with a distribution of risk of death as would be expected to be found in a large adult ICU using APACHE3 or ANZROD to generate risk scores.
+
+### Use
+
+This tool is only of use *after* data have been examined to ensure they are as accurate and complete as possible (especially minimising missing values). Once these steps have been complete, the cases within the clustering of deaths (which lead to the threshold being crossed) should be examined by clinicians. There is not a huge benefit in examining deaths in patients who had a high predicted mortality. For example, a patient with an 80% predicted risk of death  will only move the CUSUM 2% of the way towards the warning threshold (assuming an h of 4.6), but a patient with a 10% risk of death will move the CUSUM line up 13% of the way.
+
+## Step by Step
+
+on loading, you will see the following CUSUM
+
+
+You can see that the cases we want to examine are from about case #2500 to case #3000, so we set the slider on the left accordingly. The CUSUM will zoom in on the region we want. You will note as you hover your mouse over the deep pink or blue alternating upticks, the relevant line highlights yellow with a pop-up displaying brief details of the patent who lead to that uptick. 
+
+In the upper right of the CUSUM plot there is a green and a red lasso, for selecting and deselecting parts of the CUSUM. Here we have selected the region we are interested in and the selected upticks have turned red.
+
+Next we change tabs (upper right of the window) to the "Selected Cases" where we can see a table listing all the selected cases (this is a multi-page table with the arrow at the upper right of the table for moving between pages). The copy button copies all cases into the clipboard, ready to be pasted into a spreadsheet or word processor. 
+
+Armed with the focused data in the tables, it is envisaged case mix can be examined and relevant case reviews commence.
