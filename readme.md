@@ -18,7 +18,7 @@ On loading, you will see the following CUSUM
 ![CUSUM on commencement](https://github.com/mcshaz/shiny-explore-cusum/blob/main/screenshots/Screenshot%20full.png)
 
 Note that the cases we want to examine are from about case #2500 to case #3000, so we set the slider on the left accordingly. The CUSUM will zoom in on the region we want. You will note as you hover your mouse over the deep pink or blue alternating upticks, the relevant line highlights yellow with a pop-up displaying brief details of the patent who lead to that uptick. 
-![Zoomed CUSUM](https://github.com/mcshaz/shiny-explore-cusum/blob/main/screenshots/Screenshot%20Narrow%20down.png)
+
 
 In the upper right of the CUSUM plot there is a green and a red lasso, for selecting and deselecting parts of the CUSUM. Here we have selected the region we are interested in and the selected upticks have turned red.
 ![Zoomed CUSUM](https://github.com/mcshaz/shiny-explore-cusum/blob/main/screenshots/Screenshot%20selection.png)
@@ -27,5 +27,6 @@ Next we change tabs (upper right of the window) to the "Selected Cases" where we
 ![Zoomed CUSUM](https://github.com/mcshaz/shiny-explore-cusum/blob/main/screenshots/Screenshot%20table.png)
 
 Armed with the focused data in the tables, it is envisaged case mix can be examined and relevant case reviews commence.
+
 
 
