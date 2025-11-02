@@ -5,6 +5,7 @@ library(cusum)
 library(bslib)
 library(DT)
 library(dplyr)
+library(shinycssloaders)
 
 eg_mort <- readRDS("data/eg_mort.rds")
 
@@ -63,8 +64,14 @@ ui <- page_sidebar(
     ),
     navset_card_underline(
       title = "Visualisations",
-      nav_panel("CUSUM",girafeOutput("cusumPlot")),
-      nav_panel("Selected Cases",DTOutput("selectedCases"))
+      nav_panel("CUSUM",
+                shinycssloaders::withSpinner(
+                  girafeOutput("cusumPlot"))
+                ),
+      nav_panel("Selected Cases",
+                shinycssloaders::withSpinner(
+                  DTOutput("selectedCases"))
+                )
     )
 )
 
@@ -124,3 +131,4 @@ server <- function(input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
