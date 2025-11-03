@@ -103,7 +103,7 @@ server <- function(input, output) {
     # from girafe help: width_svg, height_svg: The width and height of the graphics region in inches. The default values are 6 and 5 inches. 
     # This will define the aspect ratio of the graphic as it will be used to define viewbox attribute of the SVG result.
     # we want the width the same but smaller height to fit a useful aspect ratio for a wide plot such as this
-    girafe(ggobj = csum.plot, height_svg=3)
+    girafe(ggobj = csum.plot, height_svg=3.05)
     })
     output$selectedCases <- renderDT({
       DT::datatable(filterRange(input$cusumPlot_selected), 
@@ -134,6 +134,7 @@ server <- function(input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
 
 
 
