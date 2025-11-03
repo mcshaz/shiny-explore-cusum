@@ -4,7 +4,7 @@
 
 Demonstrate how shiny might be used to help explore risk adjusted CUSUM[[1]](#1) charts as part of an investigation into the "trigger" or "warning" threshold being crossed.
 
-A working example is hosted [here](https://mcshaz.shinyapps.io/shiny-explore-cusum/)
+A working example is hosted [here](https://mcshaz.shinyapps.io/ra-cusum/).
 
 ### Data
 
@@ -38,3 +38,4 @@ Armed with the focused data in the tables, it is envisaged case mix can be exami
 <a id="1">[1]</a> 
 Cumulative sum of the Resetting Risk Adjusted Sequential Probability Ratio Test (RA-SPRT)
 see Grigg OA, Farewell VT, Spiegelhalter DJ. Use of risk-adjusted CUSUM and RSPRT charts for monitoring in medical contexts. Stat Methods Med Res. 2003 Mar;12(2):147-70. doi: 10.1177/096228020301200205. PMID: 12665208.
+
