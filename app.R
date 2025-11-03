@@ -126,7 +126,7 @@ server <- function(input, output) {
             0,
             target = "row",
             fontWeight = styleEqual(1, "bold")
-          ) %>% formatRound(columns = 'Risk', digits = 3)
+          ) %>% formatRound(columns = 'Risk', digits = 3.1)
       # data.frame(ID = rs$id, Admission = format(rs$admit, d.fmt), Discharge = format(rs$disch, d.fmt), Risk = rs$p)
     }, server = FALSE)
     
@@ -134,5 +134,6 @@ server <- function(input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
 
 
