@@ -1,32 +1,40 @@
 library(shiny)
 library(ggplot2)
 library(ggiraph)
-library(cusum)
+# library(cusum)
 library(bslib)
 library(DT)
 library(dplyr)
 library(shinycssloaders)
+library(Rcpp)
 
 eg_mort <- readRDS("data/eg_mort.rds")
+Rcpp::sourceCpp(file="./ewmaRcpp.cpp")
 
-# note dynamic with racusum_limit_dpcl()
+# todo dynamic limits available with racusum_limit_dpcl()
 
 hlim <- 4.6
+odds <- 2
 d.fmt <- "%d/%m/%Y"
 
-cs <- cusum::racusum(eg_mort$risk,
-                     eg_mort$died,
-                     limit = hlim)
-
-cs$start <- c(0, cs$ct[-nrow(cs)])
-cs$ct[cs$signal == 1] <- with(cs[cs$signal == 1,], start + log(2) - log(1 + p))
+cs <- cusumRcpp(eg_mort$risk,
+                     eg_mort$died > 0,
+                     odds,
+                     hlim)
+cs$vlad <- cumsum(eg_mort$risk - eg_mort$died)
+cs$risk <- eg_mort$risk
+cs$died <- eg_mort$died
+cs$vlad_ls <- cs$vlad + (res$doubling.start - hlim) / log(odds)
+cs$vlad_lf <- cs$vlad + (res$doubling.finish - hlim) / log(odds)
+cs$vlad_us <- cs$vlad + (res$halving.start + hlim) / log(odds)
+cs$vlad_uf <- cs$vlad + (res$halving.finish + hlim) / log(odds)
 cs$id <- eg_mort$Id
 cs$descr <- with(eg_mort, 
                    ifelse(died, 
                           paste0(
-                            "<strong>ID:</strong>", Id,
-                            "<br><strong>Admit:</strong>", format(icu_admit, d.fmt),
-                            "<br><strong>Died:</strong>", format(icu_disch, d.fmt),
+                            "<em>ID:</em>", Id,
+                            "<br><em>Admit:</em>", format(icu_admit, d.fmt),
+                            "<br><em>Died:</em>", format(icu_disch, d.fmt),
                             "<br><small>",dx ,"</small>",
                             "<br><small>(risk of death ", scales::label_percent(accuracy=1)(risk),")</small>"
                         ),
@@ -60,7 +68,11 @@ ui <- page_sidebar(
         sliderInput("caseRng", "Case Range:", 
                        min = 1, 
                        max = nrow(cs),
-                       value = c(1,nrow(cs)))
+                       value = c(1,nrow(cs))),
+        sliderInput("lambda", "Exponential weight λ:", 
+                    min = 0.001, 
+                    max = 0.05,
+                    value = 0.01)
     ),
     navset_card_underline(
       title = "Visualisations",
@@ -71,21 +83,49 @@ ui <- page_sidebar(
       nav_panel("Selected Cases",
                 shinycssloaders::withSpinner(
                   DTOutput("selectedCases"))
+                ),
+      nav_panel("EWMA",
+                shinycssloaders::withSpinner(
+                  plotOutput("ewmaPlot"))
+                ),
+      nav_panel("VLAD",
+                shinycssloaders::withSpinner(
+                  plotOutput("vladPlot"))
                 )
     )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-    filteredData <- reactive({
+    filteredCUSUMData <- reactive({
        dta <- cs[input$caseRng[1]:input$caseRng[2],]
-       mark <- dta$ct - dta$start >= log(2) - log(1 + input$p_display / 100.0)
+       mark <- dta$died & (dta$risk > input$p_display / 100.0)
        dta$grp <- as.factor(ifelse(mark, cumsum(mark), 0))
        return(dta)
     })
+
+    filteredEWMAData <- reactive({
+      runIn <- 500 # about 500 admissions every 6 months
+      minDisplay <- 25
+      start <- max(runIn + 1, min(input$caseRng[1], nrow(eg_mort) - minDisplay))
+      end <- max(input$caseRng[2], start + minDisplay)
+      priorMort <- mean(eg_mort$died[(start - runIn):start])
+      subset <- eg_mort[start:end, c("died", "risk", "t")]
+      pred <- c(priorMort, subset$risk)
+      pred <- ewmaRcpp(pred, input$lambda)
+      sePred <- ewmaSERcpp(pred * (1 - pred), input$lambda)
+      data.frame(
+        observed = ewmaRcpp(c(priorMort, subset$died), input$lambda),
+        ci99ub = pred + 2.576 * sePred,
+        ci95ub = pred + 1.96 * sePred,
+        ci95lb = pmax(0, pred - 1.96 * sePred),
+        ci99lb = pmax(0, pred - 2.576 * sePred),
+        sequence = c(start-1, subset$t)
+      )
+    })
     output$cusumPlot <- renderGirafe({
-      dt <- filteredData()
-      csum.plot <- ggplot(dt, mapping = aes(x=t, xend=t+1, y=start, yend=ct, data_id=id,
+      dt <- filteredCUSUMData()
+      csum.plot <- ggplot(dt, mapping = aes(x=sequence, xend=sequence+1, y=doubling.start, yend=doubling.finish, data_id=id,
                                         tooltip=descr)) + 
         geom_segment(data = dt[dt$grp=="0",],  color = "black") +
         geom_hline(yintercept = hlim, colour = "red", linewidth=1) +
@@ -129,7 +169,21 @@ server <- function(input, output) {
           ) %>% formatRound(columns = 'Risk', digits = 3.1)
       # data.frame(ID = rs$id, Admission = format(rs$admit, d.fmt), Discharge = format(rs$disch, d.fmt), Risk = rs$p)
     }, server = FALSE)
-    
+    output$ewmaPlot <- renderPlot(
+      ggplot(data = filteredEWMAData()) + 
+        geom_line(aes(x=sequence, y = ci95lb), colour="#d7d7d7") +
+        geom_line(aes(x=sequence, y = ci95ub), colour="#d7d7d7") +
+        geom_line(aes(x=sequence, y = ci99lb), colour="#2f2f7e") +
+        geom_line(aes(x=sequence, y = ci99ub), colour="#2f2f7e") +
+        geom_line(aes(x=sequence, y = observed), linewidth=1, colour="#ff0000") +
+        theme(panel.background = element_rect(fill = 'white', colour = 'black'))
+    )
+    output$vladPlot <- renderPlot(
+      ggplot(data = filteredCUSUMData()) +
+        geom_line(aes(x=sequence, y=vlad)) +
+        geom_segment(aes(x=sequence, xend=sequence+1, y=vlad_ls, yfinish=vlad_lf), colour="#2f2f7e") +
+        geom_segment(aes(x=sequence, xend=sequence+1, y=vlad_us, yfinish=vlad_uf), colour="#2f2f7e")
+    )
 }
 
 # Run the application 
