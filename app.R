@@ -24,10 +24,13 @@ cs <- cusumRcpp(eg_mort$risk,
 cs$vlad <- cumsum(eg_mort$risk - eg_mort$died)
 cs$risk <- eg_mort$risk
 cs$died <- eg_mort$died
-cs$vlad_ls <- cs$vlad + (res$doubling.start - hlim) / log(odds)
-cs$vlad_lf <- cs$vlad + (res$doubling.finish - hlim) / log(odds)
-cs$vlad_us <- cs$vlad + (res$halving.start + hlim) / log(odds)
-cs$vlad_uf <- cs$vlad + (res$halving.finish + hlim) / log(odds)
+cs$vlad_l <- cs$vlad + (cs$doubling.finish - hlim) / log(odds)
+cs$vlad_u <- cs$vlad + (cs$halving.finish + hlim) / log(odds)
+triggers <- list(
+  up = cs[cs$halving.finish <= -hlim, c("sequence", "vlad_u")],
+  down = cs[cs$doubling.finish >= hlim,  c("sequence", "vlad_l")]
+)
+
 cs$id <- eg_mort$Id
 cs$descr <- with(eg_mort, 
                    ifelse(died, 
@@ -95,13 +98,19 @@ ui <- page_sidebar(
     )
 )
 
-# Define server logic required to draw a histogram
 server <- function(input, output) {
     filteredCUSUMData <- reactive({
        dta <- cs[input$caseRng[1]:input$caseRng[2],]
-       mark <- dta$died & (dta$risk > input$p_display / 100.0)
+       mark <- dta$died & (dta$risk <= input$p_display / 100.0)
        dta$grp <- as.factor(ifelse(mark, cumsum(mark), 0))
        return(dta)
+    })
+    
+    filteredTriggers <- reactive({
+      return(list(
+        up = triggers$up[triggers$up$sequence >=  input$caseRng[1] & triggers$up$sequence <=  input$caseRng[2],],
+        down = triggers$down[triggers$down$sequence >=  input$caseRng[1] & triggers$down$sequence <=  input$caseRng[2],]
+      ))
     })
 
     filteredEWMAData <- reactive({
@@ -129,6 +138,7 @@ server <- function(input, output) {
                                         tooltip=descr)) + 
         geom_segment(data = dt[dt$grp=="0",],  color = "black") +
         geom_hline(yintercept = hlim, colour = "red", linewidth=1) +
+        geom_hline(yintercept = 2.9, colour = "orange", linewidth=0.75) +
         theme(aspect.ratio=0.33333) +
         labs(x = "case number", y = "cumulative log likelihood ratio", 
              caption="*alternating pink & blue upticks are to deliniate deaths in proximity and have no other meaning")
@@ -166,7 +176,9 @@ server <- function(input, output) {
             0,
             target = "row",
             fontWeight = styleEqual(1, "bold")
-          ) %>% formatRound(columns = 'Risk', digits = 3.1)
+          )  %>% 
+       formatRound(columns = 'Risk', digits = 3) #  %>% 
+      #  formatDate(columns = c('Admitted', 'Died'))
       # data.frame(ID = rs$id, Admission = format(rs$admit, d.fmt), Discharge = format(rs$disch, d.fmt), Risk = rs$p)
     }, server = FALSE)
     output$ewmaPlot <- renderPlot(
@@ -178,12 +190,15 @@ server <- function(input, output) {
         geom_line(aes(x=sequence, y = observed), linewidth=1, colour="#ff0000") +
         theme(panel.background = element_rect(fill = 'white', colour = 'black'))
     )
-    output$vladPlot <- renderPlot(
+    output$vladPlot <- renderPlot({
+      trigs <- filteredTriggers()
       ggplot(data = filteredCUSUMData()) +
-        geom_line(aes(x=sequence, y=vlad)) +
-        geom_segment(aes(x=sequence, xend=sequence+1, y=vlad_ls, yfinish=vlad_lf), colour="#2f2f7e") +
-        geom_segment(aes(x=sequence, xend=sequence+1, y=vlad_us, yfinish=vlad_uf), colour="#2f2f7e")
-    )
+        geom_line(aes(x=sequence, y=vlad), color="black") +
+        geom_line(aes(x=sequence, y=vlad_l), colour="red") +
+        geom_point(data= trigs$down, aes(x=sequence, y=vlad_l), colour = "red") +
+        geom_line(aes(x=sequence, y=vlad_u), colour="green") +
+        geom_point(data= trigs$up, aes(x=sequence, y=vlad_u), colour = "green") 
+    })
 }
 
 # Run the application 
