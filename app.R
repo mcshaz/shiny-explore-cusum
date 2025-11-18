@@ -26,10 +26,9 @@ cs$risk <- eg_mort$risk
 cs$died <- eg_mort$died
 cs$vlad_l <- cs$vlad + (cs$doubling.finish - hlim) / log(odds)
 cs$vlad_u <- cs$vlad + (cs$halving.finish + hlim) / log(odds)
-triggers <- list(
-  up = cs[cs$halving.finish <= -hlim, c("sequence", "vlad_u")],
-  down = cs[cs$doubling.finish >= hlim,  c("sequence", "vlad_l")]
-)
+cs$vlad_triggerdown <- ifelse(cs$doubling.finish >= hlim, cs$vlad_l, NA_real_)
+cs$vlad_triggerUp <- ifelse(cs$halving.finish <= -hlim, cs$vlad_u, NA_real_)
+cs$cusum_up <- ifelse(cs$doubling.finish >= hlim, cs$doubling.finish, NA_real_)
 
 cs$id <- eg_mort$Id
 cs$descr <- with(eg_mort, 
@@ -105,13 +104,6 @@ server <- function(input, output) {
        dta$grp <- as.factor(ifelse(mark, cumsum(mark), 0))
        return(dta)
     })
-    
-    filteredTriggers <- reactive({
-      return(list(
-        up = triggers$up[triggers$up$sequence >=  input$caseRng[1] & triggers$up$sequence <=  input$caseRng[2],],
-        down = triggers$down[triggers$down$sequence >=  input$caseRng[1] & triggers$down$sequence <=  input$caseRng[2],]
-      ))
-    })
 
     filteredEWMAData <- reactive({
       runIn <- 500 # about 500 admissions every 6 months
@@ -139,6 +131,7 @@ server <- function(input, output) {
         geom_segment(data = dt[dt$grp=="0",],  color = "black") +
         geom_hline(yintercept = hlim, colour = "red", linewidth=1) +
         geom_hline(yintercept = 2.9, colour = "orange", linewidth=0.75) +
+        geom_point(aes(x=sequence, y=cusum_up), colour="red", size=2) +
         theme(aspect.ratio=0.33333) +
         labs(x = "case number", y = "cumulative log likelihood ratio", 
              caption="*alternating pink & blue upticks are to deliniate deaths in proximity and have no other meaning")
@@ -190,15 +183,14 @@ server <- function(input, output) {
         geom_line(aes(x=sequence, y = observed), linewidth=1, colour="#ff0000") +
         theme(panel.background = element_rect(fill = 'white', colour = 'black'))
     )
-    output$vladPlot <- renderPlot({
-      trigs <- filteredTriggers()
+    output$vladPlot <- renderPlot(
       ggplot(data = filteredCUSUMData()) +
         geom_line(aes(x=sequence, y=vlad), color="black") +
         geom_line(aes(x=sequence, y=vlad_l), colour="red") +
-        geom_point(data= trigs$down, aes(x=sequence, y=vlad_l), colour = "red") +
+        geom_point(aes(x=sequence, y=vlad_triggerdown), colour = "red", size=2) +
         geom_line(aes(x=sequence, y=vlad_u), colour="green") +
-        geom_point(data= trigs$up, aes(x=sequence, y=vlad_u), colour = "green") 
-    })
+        geom_point(aes(x=sequence, y=vlad_triggerUp), colour = "green", size=2) 
+    )
 }
 
 # Run the application 
